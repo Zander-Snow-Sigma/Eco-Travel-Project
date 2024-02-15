@@ -35,11 +35,6 @@ TEST_DATA = {
 
 ADDRESS_BASE_URL = "https://uk-postcode.p.rapidapi.com/getpostcode"
 
-ADDRESS_HEADERS = {
-    "X-RapidAPI-Key": environ['ADDRESS_API_KEY'],
-    "X-RapidAPI-Host": environ['ADDRESS_API_HOST']
-}
-
 
 def get_raw_car_data(car_size: str, car_type: str) -> dict:
     """Returns the raw CO2e data from the """
@@ -47,12 +42,12 @@ def get_raw_car_data(car_size: str, car_type: str) -> dict:
     pass
 
 
-def get_address(postcode: str) -> str:
+def get_address(postcode: str, headers: str) -> str:
     """Gets the address from the given postcode."""
 
     query = {"postcode": postcode}
 
-    res = requests.get(ADDRESS_BASE_URL, headers=ADDRESS_HEADERS, params=query)
+    res = requests.get(ADDRESS_BASE_URL, headers=headers, params=query)
 
     if res.status_code == 200:
 
@@ -98,12 +93,17 @@ def get_total_co2(data: dict) -> float:
 
 if __name__ == "__main__":
 
+    address_headers = {
+        "X-RapidAPI-Key": environ['ADDRESS_API_KEY'],
+        "X-RapidAPI-Host": environ['ADDRESS_API_HOST']
+    }
+
     climatiq_headers = {'Authorization': f"Bearer: {environ['API_KEY']}"}
 
     raw_data = get_raw_data(TRAVEL_BASE_URL, headers=climatiq_headers)
 
     print(get_total_co2(raw_data))
 
-    address = get_address("BS20 8BL")
+    address = get_address("BS20 8BL", address_headers)
 
     print(address)
