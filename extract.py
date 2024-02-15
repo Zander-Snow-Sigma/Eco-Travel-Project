@@ -10,8 +10,6 @@ load_dotenv()
 
 COUNTRY_CODE = "GB"
 
-CLIMATIQ_HEADERS = {'Authorization': f"Bearer: {environ['API_KEY']}"}
-
 POSTCODE_BASE_URL = "https://api.postcodes.io/postcodes"
 TRAVEL_BASE_URL = "https://preview.api.climatiq.io/travel/v1-preview1/distance"
 
@@ -100,7 +98,9 @@ def get_total_co2(data: dict) -> float:
 
 if __name__ == "__main__":
 
-    raw_data = get_raw_data(TRAVEL_BASE_URL, headers=CLIMATIQ_HEADERS)
+    climatiq_headers = {'Authorization': f"Bearer: {environ['API_KEY']}"}
+
+    raw_data = get_raw_data(TRAVEL_BASE_URL, headers=climatiq_headers)
 
     print(get_total_co2(raw_data))
 
