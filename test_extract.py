@@ -1,5 +1,7 @@
 """Unit tests for the extract script."""
 
+from dotenv import load_dotenv
+
 from extract import get_total_co2
 
 
