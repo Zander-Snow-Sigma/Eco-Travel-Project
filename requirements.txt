@@ -2,3 +2,13 @@ pytest
 pylint
 requests
 python-dotenv
+streamlit
+streamlit-keyup
+streamlit-searchbox
+pandas
+altair
+pydeck
+pymongo
+extra_streamlit_components
+matplotlib
+plotly
