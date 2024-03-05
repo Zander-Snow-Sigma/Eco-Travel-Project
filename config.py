@@ -7,7 +7,7 @@ import pandas as pd
 
 load_dotenv()
 
-CLIMATIQ_HEADERS = {'Authorization': f"Bearer: {environ['API_KEY']}"}
+CLIMATIQ_HEADERS = {'Authorization': f"Bearer: {environ.get('API_KEY')}"}
 
 STATIONS_DATA = pd.read_csv('./data/stations.csv')
 AIRPORTS_DATA = pd.read_csv(

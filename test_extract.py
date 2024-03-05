@@ -1,11 +1,8 @@
 """Unit tests for the extract script."""
 
-from dotenv import load_dotenv
 import pandas as pd
 
 from extract import get_airport_location
-
-load_dotenv()
 
 
 def test_get_airport_location():
