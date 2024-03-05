@@ -5,6 +5,8 @@ import pandas as pd
 
 from extract import get_airport_location
 
+load_dotenv()
+
 
 def test_get_airport_location():
     """Tests that the correct airport location is returned."""
