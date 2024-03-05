@@ -1,13 +1,16 @@
 """Unit tests for the extract script."""
 
 from dotenv import load_dotenv
+import pandas as pd
 
-from extract import get_total_co2
+from extract import get_airport_location
 
 
-def test_get_total_co2():
-    """Tests that the total CO2e is returned from the raw data."""
+def test_get_airport_location():
+    """Tests that the correct airport location is returned."""
 
-    test_data = {'co2e': 2.98}
+    airports_df = pd.read_csv("./data/airports.csv")
 
-    assert get_total_co2(test_data) == 2.98
+    location = get_airport_location("Aksu Hongqipo Airport", airports_df)
+
+    assert location == {'lat': 41.262501, 'long': 80.291702, 'iata': "AKU"}
