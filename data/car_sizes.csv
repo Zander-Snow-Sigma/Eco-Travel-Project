@@ -1,0 +1,4 @@
+Car size,Petrol,Diesel,Others,Car example
+Small,Below 1.4-litre engine,Below 1.7-litre engine,Vehicle models of a similar size (i.e. market segment A or B),"Fiat 500, Opel Adam, Renault Clio, Ford Fiesta etc."
+Medium,From 1.4-litre to 2.0-litre engine,From 1.7-litre to 2.0-litre engine,Vehicle models of a similar size (i.e. generally market segment C),"Volkswagen Golf, Honda Civic etc."
+Large,Above 2-litre engine,Above 2-litre engine,Vehicle models of a similar size (i.e. generally market segment D and above),"BMW 3-Series, Volkswagen Passat etc."
