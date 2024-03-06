@@ -3,11 +3,69 @@
 import altair as alt
 import pandas as pd
 import pydeck as pdk
+from pydeck.data_utils import compute_view
 
-GREEN_RGB = [0, 255, 0, 40]
-RED_RGB = [240, 100, 0, 40]
+GREEN_RGB = [26, 147, 111]
 
 PIE_COLOURS = ["#1A936F", "#88D498", "#114B5F"]
+
+
+def get_zoom_data(journey_data: dict) -> pdk.ViewState:
+    """Returns the zoom data for a given journey."""
+
+    zoom_data = [[journey_data['origin']['lon'], journey_data['origin']['lat']], [
+        journey_data['destination']['lon'], journey_data['destination']['lat']]]
+
+    zoom = compute_view(zoom_data)
+
+    zoom.width = 700
+    zoom.height = 300
+    zoom.pitch = 35
+    zoom.zoom = zoom.zoom - 1
+
+    return zoom
+
+
+def get_journey_map(journey_data: dict) -> pdk.Deck:
+    """Returns a map of the journey."""
+
+    map_data = pd.DataFrame([{
+        'origin_name': journey_data['origin']['name'],
+        'origin_lat': journey_data['origin']['lat'],
+        'origin_lon': journey_data['origin']['lon'],
+        'dest_name': journey_data['destination']['name'],
+        'dest_lat': journey_data['destination']['lat'],
+        'dest_lon': journey_data['destination']['lon']
+    }])
+
+    origin = journey_data['origin']['name']
+    dest = journey_data['destination']['name']
+
+    zoom = get_zoom_data(journey_data)
+
+    journey_map = pdk.Deck(
+        map_style='mapbox://styles/mapbox/light-v9',
+        initial_view_state=zoom,
+        layers=[
+            pdk.Layer(
+                'ArcLayer',
+                data=map_data,
+                get_source_position=['origin_lon', 'origin_lat'],
+                get_target_position=['dest_lon', 'dest_lat'],
+                get_source_color=GREEN_RGB,
+                get_target_color=GREEN_RGB,
+                auto_highlight=True,
+                pickable=True,
+                get_tilt=0,
+                get_width=3
+            ),
+        ],
+        tooltip={'text': f"{origin} to {dest}"}
+    )
+
+    journey_map.picking_radius = 10
+
+    return journey_map
 
 
 def get_car_train_bar(total_co2e: float) -> alt.Chart:
@@ -48,12 +106,6 @@ def get_carbon_pie(journey_data: dict) -> alt.Chart:
     data = pd.DataFrame(data=[{'co2e': round(journey_data['co2e']['direct'], 2), 'type': 'Direct', 'percentage': f"{direct_perc}%"}, {
                         'co2e': round(journey_data['co2e']['indirect'], 2), 'type': 'Indirect', 'percentage': f"{indirect_perc}%"}])
 
-    # pie = alt.Chart(data).mark_arc().encode(
-    #     angle=alt.Angle("co2e", title="CO2e in kg"),
-    #     color=alt.Color('type', title="Emission Type",
-    #                     scale=alt.Scale(range=PIE_COLOURS))
-    # )
-
     base = alt.Chart(data).encode(
         alt.Theta("co2e", title="CO2e kg").stack(True),
         alt.Color("type", title=None,
@@ -84,6 +136,9 @@ def get_transport_bar(journeys_df: pd.DataFrame) -> alt.Chart:
 def get_transport_avgs(journeys_df: pd.DataFrame) -> alt.Chart:
     """Returns a bar chart of average CO2 per journey for each transport."""
 
+    journeys_df['transport'] = journeys_df['transport'].apply(
+        lambda x: x.capitalize())
+
     chart = alt.Chart(journeys_df).mark_bar().encode(
         x=alt.X('transport', title=""),
         y=alt.Y('mean(total)', title='CO2 (kg)'),
@@ -97,30 +152,26 @@ def get_transport_avgs(journeys_df: pd.DataFrame) -> alt.Chart:
 def get_transport_avg_km(journeys_df: pd.DataFrame) -> alt.Chart:
     """Returns a bar chart of CO2 per transport."""
 
-    # test = journeys_df.groupby('transport')
-
-    # print(test['total'])
-
     co2_tot = journeys_df.groupby('transport')['total'].sum()
     tot_dist = journeys_df.groupby('transport')['distance'].sum()
 
     data = []
 
-    if 'air' in journeys_df['transport'].values:
-        air_tot = co2_tot['air']
-        air_dist = tot_dist['air']
+    if 'Air' in journeys_df['transport'].values:
+        air_tot = co2_tot['Air']
+        air_dist = tot_dist['Air']
         air_avg_km = round(air_tot / air_dist, 2)
         data.append({'transport': 'Air', 'average': air_avg_km})
 
-    if 'car' in journeys_df['transport'].values:
-        car_tot = co2_tot['car']
-        car_dist = tot_dist['car']
+    if 'Car' in journeys_df['transport'].values:
+        car_tot = co2_tot['Car']
+        car_dist = tot_dist['Car']
         car_avg_km = round(car_tot / car_dist, 2)
         data.append({'transport': 'Car', 'average': car_avg_km})
 
-    if 'rail' in journeys_df['transport'].values:
-        rail_tot = co2_tot['rail']
-        rail_dist = tot_dist['rail']
+    if 'Rail' in journeys_df['transport'].values:
+        rail_tot = co2_tot['Rail']
+        rail_dist = tot_dist['Rail']
         rail_avg_km = round(rail_tot / rail_dist, 2)
         data.append({'transport': 'Rail', 'average': rail_avg_km})
 
@@ -134,94 +185,6 @@ def get_transport_avg_km(journeys_df: pd.DataFrame) -> alt.Chart:
     ).configure_axis(grid=False)
 
     return bar_chart
-
-
-def get_map(journey_data: dict) -> pdk.Deck:
-    """Test map."""
-
-    data = pd.DataFrame(data=[{'origin_name': journey_data['origin_name'], 'dest_name': journey_data['dest_name'], 'origin_lat': journey_data['origin_lat'],
-                        'origin_long': journey_data['origin_long'], 'dest_lat': journey_data['dest_lat'], 'dest_long': journey_data['dest_long']}])
-
-    print(data)
-
-    arc_layer = pdk.Layer(
-        type="ArcLayer",
-        data=data,
-        get_source_position=["origin_lat", "origin_long"],
-        get_target_position=["dest_lat", "dest_long"],
-        get_width=1000,
-        get_tilt=15,
-        get_source_color=RED_RGB,
-        get_target_color=GREEN_RGB,
-        pickable=True,
-        auto_highlight=True,
-    )
-
-    view_state = pdk.ViewState(
-        latitude=journey_data['origin_lat'],
-        longitude=journey_data['origin_long'],
-        bearing=0,
-        pitch=50,
-        zoom=8,
-    )
-
-    return pdk.Deck(arc_layer, initial_view_state=view_state)
-
-
-DATA_URL = "https://raw.githubusercontent.com/ajduberstein/sf_public_data/master/bay_area_commute_routes.csv"
-# A bounding box for downtown San Francisco, to help filter this commuter data
-DOWNTOWN_BOUNDING_BOX = [
-    -122.43135291617365,
-    37.766492914983864,
-    -122.38706428091974,
-    37.80583561830737,
-]
-
-
-def in_bounding_box(point):
-    """Determine whether a point is in our downtown bounding box"""
-    lng, lat = point
-    in_lng_bounds = DOWNTOWN_BOUNDING_BOX[0] <= lng <= DOWNTOWN_BOUNDING_BOX[2]
-    in_lat_bounds = DOWNTOWN_BOUNDING_BOX[1] <= lat <= DOWNTOWN_BOUNDING_BOX[3]
-    return in_lng_bounds and in_lat_bounds
-
-
-df = pd.read_csv(DATA_URL)
-# Filter to bounding box
-df = df[df[["lng_w", "lat_w"]].apply(lambda row: in_bounding_box(row), axis=1)]
-
-GREEN_RGB = [0, 255, 0, 40]
-RED_RGB = [240, 100, 0, 40]
-
-# Specify a deck.gl ArcLayer
-arc_layer = pdk.Layer(
-    "ArcLayer",
-    data=df,
-    get_width="S000 * 2",
-    get_source_position=["lng_h", "lat_h"],
-    get_target_position=["lng_w", "lat_w"],
-    get_tilt=15,
-    get_source_color=RED_RGB,
-    get_target_color=GREEN_RGB,
-    pickable=True,
-    auto_highlight=True,
-)
-
-view_state = pdk.ViewState(
-    latitude=37.7576171,
-    longitude=-122.5776844,
-    bearing=45,
-    pitch=50,
-    zoom=8,
-)
-
-
-TOOLTIP_TEXT = {
-    "html": "{S000} jobs <br /> Home of commuter in red; work location in green"}
-
-
-def get_example_map():
-    return pdk.Deck(arc_layer, initial_view_state=view_state, tooltip=TOOLTIP_TEXT)
 
 
 def get_transport_donut(journeys_df: pd.DataFrame) -> alt.Chart:
@@ -244,15 +207,6 @@ def get_transport_donut(journeys_df: pd.DataFrame) -> alt.Chart:
         data.append({'transport': 'Car', 'total': round(car_tot, 1)})
 
     transport_data = pd.DataFrame(data)
-
-    # print(totals)
-
-    # air_tot = journeys_df.groupby('transport')['total'].sum()['air']
-    # rail_tot = journeys_df.groupby('transport')['total'].sum()['rail']
-    # car_tot = journeys_df.groupby('transport')['total'].sum()['car']
-
-    # data = pd.DataFrame([{'transport': 'Air', 'total': round(air_tot, 1)}, {
-    #                     'transport': 'Rail', 'total': round(rail_tot, 1)}, {'transport': 'Car', 'total': round(car_tot, 1)}])
 
     base = alt.Chart(transport_data).encode(
         theta=alt.Theta('total', stack=True)
