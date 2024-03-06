@@ -22,7 +22,8 @@ from visuals import (
     get_car_train_bar,
     get_transport_avgs,
     get_transport_avg_km,
-    get_transport_donut
+    get_transport_donut,
+    get_journey_map
 )
 
 TRANSPORT_EMOJIS = {'car': '🚗', 'rail': '🚝', 'air': '✈️'}
@@ -40,29 +41,27 @@ CABIN_CLASSES = {'Economy': 'economy', 'First Class': 'first',
 
 
 def set_cookies(cookie_manager: CookieManager, username: str) -> None:
+    """Sets cookies after logging in."""
 
     cookie_manager.set('logged_in', True, max_age=86400, key='logged_in')
     cookie_manager.set('username', username, max_age=86400, key='username')
 
 
 def clear_cookies(cookie_manager: CookieManager) -> None:
+    """Clears cookies after logging out."""
 
     cookie_manager.delete('logged_in', key='logged_in')
     cookie_manager.delete('username', key='username')
 
 
-def load_stations():
-    data = pd.read_csv('./data/stations.csv')
-
-    return data['stationName'].to_list()
-
-
 def get_stations(search: str, stations: list) -> list:
+    """Returns a list of stations containing the search term."""
 
     return [s for s in stations if search.lower() in s.lower()] if search else []
 
 
 def submit_and_clear_rail():
+    """Inserts the rail form data into the database and resets the form."""
 
     origin_station = st.session_state.origin_station
     dest_station = st.session_state.dest_station
@@ -87,12 +86,15 @@ def submit_and_clear_rail():
 
 
 def submit_and_clear_car():
+    """Inserts the car form data into the database and resets the form."""
+
     origin_postcode = st.session_state.origin_postcode
     dest_postcode = st.session_state.dest_postcode
     car_size = st.session_state.car_size
     car_type = st.session_state.car_type
     car_details = {
         'car_size': CAR_SIZES[car_size], 'car_type': CAR_TYPES[car_type]}
+
     journey_data = get_car_db_data(
         origin_postcode, dest_postcode, car_details)
 
@@ -112,6 +114,7 @@ def submit_and_clear_car():
 
 
 def submit_and_clear_air():
+    """Inserts the air form data into the database and resets the form."""
 
     origin_airport = st.session_state.origin_airport
     dest_airport = st.session_state.dest_airport
@@ -133,18 +136,6 @@ def submit_and_clear_air():
 
     st.session_state.journey = journey_data
     st.session_state['travel_mode'] = None
-
-
-def load_airports():
-    """Loads in the airports."""
-
-    data = pd.read_csv("./data/airports.csv")
-
-    data = data.dropna(axis=0, subset=['iata_code'])
-
-    airport_names = data['name']
-
-    return airport_names
 
 
 def validate_username(username: str, collection: Collection) -> bool:
@@ -183,7 +174,6 @@ def login(collection: Collection, cookie_manager: CookieManager) -> None:
             'Password', placeholder="Enter your password", type='password')
 
         if authenticate_user(username, password, collection):
-            user = collection.find_one({'username': username})
             st.session_state['logged_in'] = True
             st.session_state['username'] = username
             set_cookies(cookie_manager, username)
@@ -195,30 +185,30 @@ def login(collection: Collection, cookie_manager: CookieManager) -> None:
         st.form_submit_button("Login")
 
 
-def render_login() -> tuple:
-    """Renders the login form."""
+# def render_login() -> tuple:
+#     """Renders the login form."""
 
-    st.subheader("Login")
+#     st.subheader("Login")
 
-    username = st.text_input(
-        'Username', placeholder="Enter a username")
-    password = st.text_input(
-        'Password', placeholder="Enter your password", type='password')
+#     username = st.text_input(
+#         'Username', placeholder="Enter a username")
+#     password = st.text_input(
+#         'Password', placeholder="Enter your password", type='password')
 
-    return username, password
+    # return username, password
 
 
-def handle_login(username: str, password: str, collection: Collection) -> None:
-    """Handles the login authentication."""
+# def handle_login(username: str, password: str, collection: Collection) -> None:
+#     """Handles the login authentication."""
 
-    if authenticate_user(username, password, collection):
-        st.session_state['logged_in'] = True
-        st.session_state['username'] = username
-        st.rerun()
-    elif st.session_state.tried_login:
-        st.error("Incorrect username or password")
-    else:
-        st.session_state.tried_login = True
+#     if authenticate_user(username, password, collection):
+#         st.session_state['logged_in'] = True
+#         st.session_state['username'] = username
+#         st.rerun()
+#     elif st.session_state.tried_login:
+#         st.error("Incorrect username or password")
+#     else:
+#         st.session_state.tried_login = True
 
 
 def sign_up(collection: Collection) -> None:
@@ -252,58 +242,228 @@ def sign_up(collection: Collection) -> None:
         st.form_submit_button('Sign Up')
 
 
+def render_login_page(user_collection: Collection, cookie_manager: CookieManager) -> None:
+    """Renders the login page."""
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.title(":green[Green]Route 🌱")
+        st.markdown(
+            """### Plan journeys around your :green[carbon footprint]""")
+        subcol1, subcol2 = st.columns([0.15, 2])
+        with subcol1:
+            st.image("./images/climatiq_logo.png", width=25)
+
+        with subcol2:
+            st.write(
+                "Data provided by **[Climatiq](https://www.climatiq.io/)**")
+
+    with col2:
+
+        st_lottie(
+            "https://lottie.host/21cf136b-2ca0-4429-8ec6-cf19069235f5/BrvtJ7RHJJ.json", width=340, height=200)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        login(user_collection, cookie_manager)
+    with col2:
+        sign_up(user_collection)
+
+
+def get_sorted_user_journeys(journey_collection: Collection, user_id: str) -> list:
+    """Returns a list of journeys submitted by the user sorted by date in descending order."""
+
+    journeys = list(journey_collection.find({"user_id": user_id}))
+
+    sorted_journeys = sorted(
+        journeys, key=lambda x: x['submitted_at'], reverse=True)
+
+    return sorted_journeys
+
+
+def get_journey_name(journey: dict) -> str:
+    """Returns the name of the journey from its dictionary."""
+
+    journey_emoji = TRANSPORT_EMOJIS[journey['transport']['type']]
+    journey_origin = journey['origin']['name']
+    journey_dest = journey['destination']['name']
+
+    return f"{journey_emoji} {journey_origin} to {journey_dest}"
+
+
+def render_car_form() -> None:
+    """Renders the form for submitting a car journey."""
+
+    origin_postcode = st_keyup(
+        label="Origin Postcode", key='origin_postcode')
+
+    if origin_postcode:
+        if is_valid_postcode(origin_postcode):
+            st.success("Postcode found!", icon="✅")
+        else:
+            st.warning("No postcode found", icon="🚨")
+
+    destination_postcode = st_keyup(
+        label='Destination Postcode', key='dest_postcode')
+
+    if destination_postcode:
+        if is_valid_postcode(destination_postcode):
+            st.success("Postcode found!", icon="✅")
+        else:
+            st.warning("No postcode found", icon="🚨")
+
+    car_size = st.selectbox('Select your car size:', options=[
+                            'Small', 'Medium', 'Large', 'Unsure'], index=None, key='car_size')
+
+    with st.expander("How big is my car?"):
+        st.dataframe(CAR_SIZE_DATA, hide_index=True)
+        st.write(
+            'Data taken from https://www.climatiq.io/docs/api-reference/travel')
+
+    car_type = st.selectbox('Select car type:', options=[
+                            'Petrol', 'Diesel', 'Electric', 'Hybrid', 'Plug-in Hybrid', 'Unsure'
+                            ], index=None, key='car_type')
+
+    if origin_postcode and destination_postcode and is_valid_postcode(origin_postcode) and is_valid_postcode(destination_postcode) and car_size and car_type:
+
+        st.button('Submit Journey', on_click=submit_and_clear_car)
+
+
+def render_rail_form() -> None:
+    """Renders the form for submitting a rail journey."""
+
+    stations = STATIONS_DATA['stationName'].to_list()
+
+    origin_station = st.selectbox(
+        'Origin Station', options=stations, index=None, key='origin_station')
+
+    destination_station = st.selectbox(
+        'Destination Station', options=stations, index=None, key='dest_station')
+
+    if origin_station and destination_station:
+
+        st.button('Submit Journey', on_click=submit_and_clear_rail)
+
+
+def render_air_form() -> None:
+    """Renders the form for submitting an air journey."""
+
+    airports = AIRPORTS_DATA['name']
+
+    origin_airport = st.selectbox(
+        'Origin Airport', options=airports, index=None, key='origin_airport'
+    )
+
+    destination_airport = st.selectbox(
+        'Destination Airport', options=airports, index=None, key='dest_airport'
+    )
+
+    cabin_class = st.selectbox(
+        'Cabin Class', options=['Economy', 'First Class', 'Business Class', 'Unsure'], index=None, key='cabin_class'
+    )
+
+    if origin_airport and destination_airport and cabin_class:
+
+        st.button(
+            'Submit Journey', on_click=submit_and_clear_air
+        )
+
+
+def render_sidebar(username: str) -> None:
+    """Renders the sidebar."""
+
+    with st.sidebar:
+
+        st.title(":green[Green]Route 🌱")
+        st.subheader(f"Welcome {username}!")
+
+        st.divider()
+
+        st.header('Enter Journey Details')
+
+        transport = st.selectbox(
+            'Mode of Transport', options=TRAVEL_OPTIONS, index=None, key='travel_mode')
+
+        if transport == TRAVEL_OPTIONS[0]:
+
+            render_car_form()
+
+        if transport == TRAVEL_OPTIONS[1]:
+
+            render_rail_form()
+
+        if transport == TRAVEL_OPTIONS[2]:
+
+            render_air_form()
+
+        st.divider()
+
+        if st.sidebar.button("Logout"):
+            st.session_state.logged_in = False
+            st.session_state.username = ''
+            clear_cookies(cookie_manager)
+            time.sleep(0.5)
+            st.rerun()
+
+
+def delete_journey() -> None:
+    """Removes a journey from the db."""
+
+    journey_collection: Collection = st.session_state.journey_coll
+    user_id = st.session_state.user_id
+    journey = st.session_state.journey
+
+    journey_collection.delete_one(
+        filter={'user_id': user_id, 'submitted_at': journey['submitted_at']})
+
+    st.rerun()
+
+
+def get_journeys_df(user_journeys: list) -> pd.DataFrame:
+    """Returns a dataframe of the users journeys."""
+
+    journeys_df = pd.DataFrame(user_journeys)
+
+    journeys_df = journeys_df.join(pd.DataFrame(
+        journeys_df.pop('transport').values.tolist()).rename(columns={'type': 'transport'}))
+
+    journeys_df = journeys_df.join(pd.DataFrame(
+        journeys_df.pop('origin').values.tolist()).rename(columns={'name': 'origin_name', 'lat': 'origin_lat', 'lon': 'origin_lon'}))
+
+    journeys_df = journeys_df.join(pd.DataFrame(
+        journeys_df.pop('destination').values.tolist()).rename(columns={'name': 'dest_name', 'lat': 'dest_lat', 'lon': 'dest_lon'}))
+
+    journeys_df = journeys_df.join(pd.DataFrame(
+        journeys_df.pop('co2e').values.tolist()))
+
+    return journeys_df
+
+
 if __name__ == "__main__":
 
     st.set_page_config(page_title="GreenRoute",
                        page_icon="🌱", layout='centered')
 
     cookie_manager = CookieManager()
-
     logged_in = cookie_manager.get('logged_in')
+
+    cluster = MongoClient(environ['DB_URL'])
+    db = cluster['eco_travel']
+    user_collection = db['users']
 
     if logged_in:
         st.session_state.logged_in = True
     else:
         st.session_state.logged_in = False
 
-    cluster = MongoClient(environ['DB_URL'])
-    db = cluster['eco_travel']
-    user_collection = db['users']
-
-    journey_collection = db['journeys']
-
-    st.session_state.journey_coll = journey_collection
-
     if "tried_login" not in st.session_state:
         st.session_state.tried_login = False
 
     if not st.session_state.get('logged_in'):
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.title(":green[Green]Route 🌱")
-            st.markdown(
-                """### Plan journeys around your :green[carbon footprint]""")
-            subcol1, subcol2 = st.columns([0.15, 2])
-            with subcol1:
-                st.image("./images/climatiq_logo.png", width=25)
-
-            with subcol2:
-                st.write(
-                    "Data provided by **[Climatiq](https://www.climatiq.io/)**")
-
-        with col2:
-
-            st_lottie(
-                "https://lottie.host/21cf136b-2ca0-4429-8ec6-cf19069235f5/BrvtJ7RHJJ.json", width=340, height=200)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            login(user_collection, cookie_manager)
-        with col2:
-            sign_up(user_collection)
+        render_login_page(user_collection, cookie_manager)
 
     else:
 
@@ -312,24 +472,26 @@ if __name__ == "__main__":
         st.session_state['user_id'] = user_collection.find_one(
             {"username": username}).get("_id")
 
-        st.sidebar.title(":green[Green]Route 🌱")
+        render_sidebar(username)
 
-        st.sidebar.divider()
+        journey_collection = db['journeys']
+        st.session_state.journey_coll = journey_collection
 
         if not journey_collection.find_one({"user_id": st.session_state.user_id}):
-            st.header("Enter a journey to get started!")
+            # st_lottie(
+            #     "https://lottie.host/37615ec4-3b66-404a-86ab-d1a75894690f/ha454AgqDi.json")
+            st.subheader("Enter a journey to get started")
+
         else:
 
-            user_journeys = journey_collection.find(
-                {"user_id": st.session_state.user_id})
+            user_journeys = get_sorted_user_journeys(
+                journey_collection, st.session_state.user_id)
 
-            latest_journey = user_journeys.sort('submitted_at', -1)[0]
+            latest_journey = user_journeys[0]
 
-            journey_names = {
-                f"{TRANSPORT_EMOJIS[journey['transport']['type']]} {journey['origin']['name']} to {journey['destination']['name']}": journey['_id'] for journey in user_journeys}
-
-            user_journeys = journey_collection.find(
-                {"user_id": st.session_state.user_id})
+            journey_names = {get_journey_name(journey): journey['_id']
+                             for journey in user_journeys
+                             }
 
             col1, col2 = st.columns([1.3, 1])
 
@@ -349,57 +511,20 @@ if __name__ == "__main__":
                 else:
                     journey = latest_journey
 
-            user_journeys = journey_collection.find(
-                {"user_id": st.session_state.user_id})
+            st.session_state['journey'] = journey
 
             emoji = TRANSPORT_EMOJIS[journey['transport']['type']]
 
-            map_data = pd.DataFrame([{'origin_name': journey['origin']['name'], 'origin_lat': journey['origin']['lat'], 'origin_lon': journey['origin']
-                                      ['lon'], 'dest_name': journey['destination']['name'], 'dest_lat': journey['destination']['lat'], 'dest_lon': journey['destination']['lon']}])
-
-            origin = journey['origin']['name']
-            dest = journey['destination']['name']
-
-            distance = round(journey['distance'], 2)
-
-            zoom_data = [[journey['origin']['lon'], journey['origin']['lat']], [
-                journey['destination']['lon'], journey['destination']['lat']]]
-
-            zoom = compute_view(zoom_data)
-
-            zoom.width = 700
-            zoom.height = 300
-            zoom.pitch = 35
-            zoom.zoom = zoom.zoom - 1
-
-            journey_map = pdk.Deck(
-                map_style='mapbox://styles/mapbox/light-v9',
-                initial_view_state=zoom,
-                layers=[
-                    pdk.Layer(
-                        'ArcLayer',
-                        data=map_data,
-                        get_source_position=['origin_lon', 'origin_lat'],
-                        get_target_position=['dest_lon', 'dest_lat'],
-                        get_source_color=[26, 147, 111],
-                        get_target_color=[26, 147, 111],
-                        auto_highlight=True,
-                        pickable=True,
-                        get_tilt=0,
-                        get_width=3
-                    ),
-                ],
-                tooltip={'text': f"{origin} to {dest}"}
-            )
-
-            journey_map.picking_radius = 10
+            journey_map = get_journey_map(journey)
 
             st.pydeck_chart(journey_map)
 
             col1, col2 = st.columns([4, 1.5])
 
             with col1:
-                st.subheader(f"{emoji} {origin} ➡️ {dest} ({distance}km)")
+                distance = round(journey['distance'], 2)
+                journey_name = get_journey_name(journey)
+                st.subheader(f"{journey_name} ({distance}km)")
 
             with col2:
                 if emoji == TRANSPORT_EMOJIS['car']:
@@ -446,6 +571,8 @@ if __name__ == "__main__":
                             st.write(
                                 "is how much more CO2 would be produced if you traveled by car")
 
+                st.button("Delete Journey", on_click=delete_journey)
+
             with col2:
 
                 pie = get_carbon_pie(journey)
@@ -460,19 +587,7 @@ if __name__ == "__main__":
 
             st.divider()
 
-            journeys_df = pd.DataFrame(user_journeys)
-
-            journeys_df = journeys_df.join(pd.DataFrame(
-                journeys_df.pop('transport').values.tolist()).rename(columns={'type': 'transport'}))
-
-            journeys_df = journeys_df.join(pd.DataFrame(
-                journeys_df.pop('origin').values.tolist()).rename(columns={'name': 'origin_name', 'lat': 'origin_lat', 'lon': 'origin_lon'}))
-
-            journeys_df = journeys_df.join(pd.DataFrame(
-                journeys_df.pop('destination').values.tolist()).rename(columns={'name': 'dest_name', 'lat': 'dest_lat', 'lon': 'dest_lon'}))
-
-            journeys_df = journeys_df.join(pd.DataFrame(
-                journeys_df.pop('co2e').values.tolist()))
+            journeys_df = get_journeys_df(user_journeys)
 
             col1, col2 = st.columns([3, 1])
 
@@ -544,92 +659,3 @@ if __name__ == "__main__":
                 transport_avg_km = get_transport_avg_km(journeys_df)
 
                 st.altair_chart(transport_avg_km, use_container_width=True)
-
-        with st.sidebar:
-
-            st.header('Enter Journey Details')
-
-            transport = st.selectbox(
-                'Mode of Transport', options=TRAVEL_OPTIONS, index=None, key='travel_mode')
-
-            if transport == TRAVEL_OPTIONS[0]:
-
-                origin_postcode = st_keyup(
-                    label="Origin Postcode", key='origin_postcode')
-
-                if origin_postcode:
-                    if is_valid_postcode(origin_postcode):
-                        st.success("Postcode found!", icon="✅")
-                    else:
-                        st.warning("No postcode found", icon="🚨")
-
-                destination_postcode = st_keyup(
-                    label='Destination Postcode', key='dest_postcode')
-
-                if destination_postcode:
-                    if is_valid_postcode(destination_postcode):
-                        st.success("Postcode found!", icon="✅")
-                    else:
-                        st.warning("No postcode found", icon="🚨")
-
-                car_size = st.selectbox('Select your car size:', options=[
-                                        'Small', 'Medium', 'Large', 'Unsure'], index=None, key='car_size')
-
-                with st.expander("How big is my car?"):
-                    st.dataframe(CAR_SIZE_DATA, hide_index=True)
-                    st.write(
-                        'Data taken from https://www.climatiq.io/docs/api-reference/travel')
-
-                car_type = st.selectbox('Select car type:', options=[
-                                        'Petrol', 'Diesel', 'Electric', 'Hybrid', 'Plug-in Hybrid', 'Unsure'], index=None, key='car_type')
-
-                if origin_postcode and destination_postcode and is_valid_postcode(origin_postcode) and is_valid_postcode(destination_postcode) and car_size and car_type:
-
-                    submitted = st.button(
-                        'Submit Journey', on_click=submit_and_clear_car)
-
-            if transport == TRAVEL_OPTIONS[1]:
-
-                stations = load_stations()
-
-                origin_station = st.selectbox(
-                    'Origin Station', options=stations, index=None, key='origin_station')
-
-                destination_station = st.selectbox(
-                    'Destination Station', options=stations, index=None, key='dest_station')
-
-                if origin_station and destination_station:
-
-                    submitted = st.button(
-                        'Submit Journey', on_click=submit_and_clear_rail)
-
-            if transport == TRAVEL_OPTIONS[2]:
-
-                airports = load_airports()
-
-                origin_airport = st.selectbox(
-                    'Origin Airport', options=airports, index=None, key='origin_airport'
-                )
-
-                destination_airport = st.selectbox(
-                    'Destination Airport', options=airports, index=None, key='dest_airport'
-                )
-
-                cabin_class = st.selectbox(
-                    'Cabin Class', options=['Economy', 'First Class', 'Business Class', 'Unsure'], index=None, key='cabin_class'
-                )
-
-                if origin_airport and destination_airport and cabin_class:
-
-                    submitted = st.button(
-                        'Submit Journey', on_click=submit_and_clear_air
-                    )
-
-            st.divider()
-
-            if st.sidebar.button("Logout"):
-                st.session_state.logged_in = False
-                st.session_state.username = ''
-                clear_cookies(cookie_manager)
-                time.sleep(0.5)
-                st.rerun()
