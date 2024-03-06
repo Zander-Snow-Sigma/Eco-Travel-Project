@@ -593,7 +593,8 @@ if __name__ == "__main__":
                     # st.write("###### Indirect")
                     with st.expander("Indirect", expanded=True):
                         st.write("The upstream emissions associated with the journey, such as transmission and distribution losses for electricity, or the extraction and transportation of the fuel (i.e. well-to-tank).")
-                    st.write("(Taken from Climatiq)")
+                    st.write(
+                        "(Taken from [Climatiq](https://www.climatiq.io/docs/api-reference/travel))")
             st.divider()
 
             journeys_df = get_journeys_df(user_journeys)
