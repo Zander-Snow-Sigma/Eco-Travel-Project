@@ -177,7 +177,7 @@ def login(collection: Collection, cookie_manager: CookieManager) -> None:
             st.session_state['logged_in'] = True
             st.session_state['username'] = username
             set_cookies(cookie_manager, username)
-            time.sleep(0.5)
+            time.sleep(1)
             st.rerun()
         elif username and password:
             st.error("Incorrect Username or Password")
@@ -404,7 +404,7 @@ def render_sidebar(username: str) -> None:
             st.session_state.logged_in = False
             st.session_state.username = ''
             clear_cookies(cookie_manager)
-            time.sleep(0.5)
+            time.sleep(1)
             st.rerun()
 
 
