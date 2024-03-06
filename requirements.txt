@@ -13,3 +13,4 @@ extra_streamlit_components
 matplotlib
 plotly
 bcrypt
+streamlit-lottie
