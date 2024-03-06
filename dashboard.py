@@ -577,14 +577,23 @@ if __name__ == "__main__":
 
                 pie = get_carbon_pie(journey)
 
-                subcol1, subcol2 = st.columns([0.8, 2])
+                tab1, tab2 = st.tabs(
+                    ['Emissions Breakdown', 'Direct vs Indirect?'])
+                with tab1:
+                    subcol1, subcol2 = st.columns([0.8, 2])
+                    # with subcol2:
+                    #     st.write("##### Emissions Breakdown")
 
-                with subcol2:
+                    st.altair_chart(pie)
 
-                    st.write("##### Emissions Breakdown")
-
-                st.altair_chart(pie)
-
+                with tab2:
+                    with st.expander("Direct", expanded=True):
+                        # st.write("###### Direct")
+                        st.write("The emissions associated with the direct emissions of the journey, such as the combustion of fuel or generation of electricity. For air flights, the radiative forcing effect is included in these emissions.")
+                    # st.write("###### Indirect")
+                    with st.expander("Indirect", expanded=True):
+                        st.write("The upstream emissions associated with the journey, such as transmission and distribution losses for electricity, or the extraction and transportation of the fuel (i.e. well-to-tank).")
+                    st.write("(Taken from Climatiq)")
             st.divider()
 
             journeys_df = get_journeys_df(user_journeys)
