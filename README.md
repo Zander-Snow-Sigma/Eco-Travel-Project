@@ -9,6 +9,19 @@ The dashboard can currently be accessed [here](https://greenroute.streamlit.app/
 ### Main Page
 <img src="./images/dashboard_main_page.png">
 
+## 🛠️ Infrastructure
+- Navigate to the `terraform` folder
+- Create a `terraform.tfvars` file with the following keys
+```
+PUBLIC_KEY = 
+PRIVATE_KEY = 
+ORG_ID = 
+AWS_REGION = 
+DB_USERNAME = 
+DB_PASSWORD = 
+```
+- To provision the MongoDB cluster, run `terraform init` followed by `terraform apply`
+
 ## ⚙️ Setup
 - Activate a new virtual environment
 - Install project dependencies using `pip install -r requirements.txt`
